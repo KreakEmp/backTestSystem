@@ -286,10 +286,20 @@ tbody tr:hover { background: #181818; }
 }
 
 .badge-buy      { background: #14532d; color: #4ade80; }
+.badge-long     { background: #14532d; color: #4ade80; }
+.badge-short    { background: #450a0a; color: #f87171; }
 .badge-sell     { background: #450a0a; color: #f87171; }
-.badge-target   { background: #1e3a5f; color: #60a5fa; }
-.badge-stoploss { background: #431407; color: #fb923c; }
-.badge-end      { background: #1c1c2e; color: #a78bfa; }
+.badge-target     { background: #1e3a5f; color: #60a5fa; }
+.badge-stoploss   { background: #431407; color: #fb923c; }
+.badge-sl-gap     { background: #431407; color: #fb923c; outline: 1px dashed #fb923c; }
+.badge-end        { background: #1c1c2e; color: #a78bfa; }
+
+.trade-details-table th,
+.trade-details-table td { white-space: nowrap; }
+
+.td-date  { color: #aaa; }
+.td-time  { color: #777; font-size: 12px; font-variant-numeric: tabular-nums; }
+.td-muted { color: #666; }
 
 /* ── Settings page ───────────────────────────────────────────────────────── */
 
@@ -469,6 +479,20 @@ tbody tr:hover { background: #181818; }
 .token-error   { font-size: 12px; color: #f87171; margin-top: 2px; }
 .token-warning { font-size: 12px; color: #fb923c; margin-top: 4px; }
 
+.zerodha-login-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 4px;
+  border-top: 1px solid #2a2a2a;
+}
+
+.zerodha-login-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 .token-manual {
   border-top: 1px solid #2a2a2a;
   padding-top: 16px;
@@ -494,4 +518,129 @@ tbody tr:hover { background: #181818; }
   overflow-x: auto;
   line-height: 1.7;
   white-space: pre;
+}
+
+/* ── Run status panel ────────────────────────────────────────────────────── */
+
+.run-status-panel {
+  background: #141414;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.run-status-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.run-phase-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+}
+
+.run-phase-fetching   { background: #1c3b6a; color: #60a5fa; }
+.run-phase-simulating { background: #1a3a2a; color: #4ade80; }
+.run-phase-done       { background: #1a2e1a; color: #86efac; }
+.run-phase-stopped    { background: #2e1e1a; color: #f87171; }
+
+.stop-btn {
+  padding: 4px 14px;
+  border-radius: 6px;
+  border: 1px solid #f87171;
+  background: transparent;
+  color: #f87171;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.stop-btn:hover { background: #2e1a1a; }
+
+.run-elapsed {
+  font-size: 12px;
+  color: #555;
+  margin-left: auto;
+}
+
+/* ── Fetch progress ───────────────────────────────────────────────────────── */
+
+.fetch-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fetch-label {
+  font-size: 12px;
+  color: #888;
+}
+
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progress-label {
+  font-size: 11px;
+  color: #666;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.progress-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  overflow: hidden;
+  appearance: none;
+  -webkit-appearance: none;
+  background: #222;
+  border: none;
+}
+
+.progress-bar::-webkit-progress-bar   { background: #222; border-radius: 3px; }
+.progress-bar::-webkit-progress-value { background: #4ade80; border-radius: 3px; }
+.progress-bar::-moz-progress-bar      { background: #4ade80; border-radius: 3px; }
+
+.progress-frac {
+  font-size: 11px;
+  color: #555;
+  width: 40px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Live results badge ──────────────────────────────────────────────────── */
+
+.sim-live-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: #1a3a2a;
+  color: #4ade80;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  vertical-align: middle;
+  margin-left: 6px;
+  animation: pulse-green 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
 }

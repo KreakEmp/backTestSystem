@@ -5,7 +5,6 @@ import { BASE_URL } from '../lib/providers/zerodha.js'
 // ── Tab registry — add new settings tabs here ────────────────────────────────
 const TABS = [
   { id: 'dataConnector', label: 'Data Connector' },
-  { id: 'tokenHelper',   label: 'Token Helper',   providerOnly: 'zerodha' },
 ]
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -169,6 +168,104 @@ print(r.json()["data"]["access_token"])`}
 }
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ── Zerodha one-click login (popup flow) ─────────────────────────────────────
+function ZerodhaLoginButton({ apiKey, apiSecret, tokenUpdatedAt, onTokenGenerated }) {
+  const [status, setStatus] = useState(null) // null | 'waiting' | 'exchanging' | 'success' | 'error'
+  const [msg,    setMsg]    = useState('')
+
+  async function handleLogin() {
+    setStatus('waiting')
+    setMsg('')
+
+    const loginUrl = `https://kite.trade/connect/login?api_key=${encodeURIComponent(apiKey)}&v=3`
+    const popup = window.open(loginUrl, 'kite_login', 'width=600,height=700')
+    if (!popup) {
+      setStatus('error')
+      setMsg('Popup blocked — allow popups for this site and try again.')
+      return
+    }
+
+    const poll = setInterval(async () => {
+      try {
+        const params = new URL(popup.location.href).searchParams
+        const requestToken = params.get('request_token')
+        const loginStatus  = params.get('status')
+
+        if (loginStatus === 'success' && requestToken) {
+          clearInterval(poll)
+          popup.close()
+          setStatus('exchanging')
+          try {
+            const checksum = await sha256hex(apiKey + requestToken + apiSecret)
+            const res = await fetch(`${BASE_URL}/session/token`, {
+              method: 'POST',
+              headers: {
+                'X-Kiteconnect-Apikey': apiKey,
+                'Content-Type': 'application/x-www-form-urlencoded',
+              },
+              body: new URLSearchParams({ api_key: apiKey, request_token: requestToken, checksum }),
+            })
+            const json = await res.json()
+            if (json.status === 'error') throw new Error(json.message)
+            const token = json.data?.access_token
+            if (!token) throw new Error('No access_token in response.')
+            onTokenGenerated(token)
+            setStatus('success')
+            setMsg('Logged in — access token saved.')
+          } catch (err) {
+            setStatus('error')
+            setMsg(err.message === 'Failed to fetch'
+              ? 'CORS error during token exchange. Check your proxy / Vite config.'
+              : err.message)
+          }
+        } else if (loginStatus === 'error') {
+          clearInterval(poll)
+          popup.close()
+          setStatus('error')
+          setMsg('Zerodha login failed or was cancelled.')
+        }
+      } catch {
+        // Still on Kite domain (cross-origin) — keep polling
+      }
+
+      if (popup.closed) {
+        clearInterval(poll)
+        setStatus(prev => prev === 'waiting' ? null : prev)
+      }
+    }, 500)
+  }
+
+  const busy = status === 'waiting' || status === 'exchanging'
+
+  const lastUpdated = tokenUpdatedAt ? new Date(tokenUpdatedAt) : null
+
+  return (
+    <div className="zerodha-login-section">
+      <button
+        type="button"
+        className="save-btn"
+        onClick={handleLogin}
+        disabled={!apiKey || !apiSecret || busy}
+        title={!apiKey || !apiSecret ? 'Enter API Key and API Secret first' : ''}
+      >
+        {status === 'waiting'     ? 'Waiting for login…'
+          : status === 'exchanging' ? 'Getting token…'
+          : 'Refresh Auth Token'}
+      </button>
+      <div className="zerodha-login-meta">
+        {lastUpdated && !status && (
+          <span className="settings-hint">
+            Last refreshed: {lastUpdated.toLocaleDateString()} {lastUpdated.toLocaleTimeString()}
+          </span>
+        )}
+        {status === 'success' && <span className="token-success">{msg}</span>}
+        {status === 'error'   && <span className="token-error">{msg}</span>}
+      </div>
+    </div>
+  )
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function SettingsPage({ providerConfig, onSave }) {
   const [activeTab, setActiveTab]   = useState(TABS[0].id)
   const [local, setLocal]           = useState(providerConfig)
@@ -203,9 +300,13 @@ export default function SettingsPage({ providerConfig, onSave }) {
   }
 
   function handleTokenGenerated(token) {
-    const updated = { ...local, credentials: { ...local.credentials, accessToken: token } }
+    const updated = {
+      ...local,
+      credentials: { ...local.credentials, accessToken: token },
+      tokenUpdatedAt: new Date().toISOString(),
+    }
     setLocal(updated)
-    onSave(updated) // auto-persist so the user doesn't need to click Save
+    onSave(updated)
   }
 
   return (
@@ -255,7 +356,9 @@ export default function SettingsPage({ providerConfig, onSave }) {
             </div>
           )}
 
-          {selectedProvider.credentialFields.map(field => (
+          {selectedProvider.credentialFields.filter(field =>
+            !(local.providerId === 'zerodha' && field.name === 'accessToken')
+          ).map(field => (
             <div key={field.name} className="settings-field">
               <label>{field.label}</label>
               <div className="secret-wrapper">
@@ -279,6 +382,15 @@ export default function SettingsPage({ providerConfig, onSave }) {
               </div>
             </div>
           ))}
+
+          {local.providerId === 'zerodha' && (
+            <ZerodhaLoginButton
+              apiKey={local.credentials.apiKey}
+              apiSecret={local.credentials.apiSecret}
+              tokenUpdatedAt={local.tokenUpdatedAt}
+              onTokenGenerated={handleTokenGenerated}
+            />
+          )}
 
           <div className="settings-actions">
             <button type="submit" className="save-btn">Save Settings</button>

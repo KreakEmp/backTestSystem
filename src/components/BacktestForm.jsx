@@ -25,15 +25,16 @@ function loadForm(defaultInterval) {
   } catch {}
   const s = strategies[0]
   return {
-    ticker:         'NIFTY 50',
-    startDate:      oneYearAgo,
-    endDate:        today,
-    initialCapital: 100000,
-    stopLoss:       0,
-    target:         0,
-    strategyId:     s.id,
-    interval:       defaultInterval,
-    strategyParams: defaultStrategyParams(s),
+    ticker:          'NIFTY 50',
+    startDate:       oneYearAgo,
+    endDate:         today,
+    initialCapital:  100000,
+    stopLoss:        0,
+    target:          0,
+    tradeDirection:  'long',
+    strategyId:      s.id,
+    interval:        defaultInterval,
+    strategyParams:  defaultStrategyParams(s),
   }
 }
 
@@ -67,8 +68,9 @@ export default function BacktestForm({ onSubmit, loading, intervalOptions, defau
       endDate:        form.endDate,
       initialCapital: parseFloat(form.initialCapital),
       riskConfig: {
-        stopLoss: parseFloat(form.stopLoss) || 0,
-        target:   parseFloat(form.target)   || 0,
+        stopLoss:  parseFloat(form.stopLoss) || 0,
+        target:    parseFloat(form.target)   || 0,
+        direction: form.tradeDirection,
       },
       strategyId:     form.strategyId,
       interval:       form.interval,
@@ -164,13 +166,21 @@ export default function BacktestForm({ onSubmit, loading, intervalOptions, defau
             min={0} max={1000} step={0.1} placeholder="0 = hold until trend change"
           />
         </label>
+        <label>
+          Trade Direction
+          <select name="tradeDirection" value={form.tradeDirection} onChange={handleBase}>
+            <option value="long">Long Only (Buy)</option>
+            <option value="short">Short Only (Sell)</option>
+            <option value="both">Both</option>
+          </select>
+        </label>
         <div className="risk-hint">
           Set both to <strong>0</strong> to hold until the strategy signals a trend change.
         </div>
       </div>
 
       <button type="submit" disabled={loading}>
-        {loading ? 'Running…' : 'Run Backtest'}
+        {loading ? 'Running…' : 'Start Backtest'}
       </button>
     </form>
   )
