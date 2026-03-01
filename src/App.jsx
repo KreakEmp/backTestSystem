@@ -154,7 +154,7 @@ export default function App() {
 
         // Pass intraday max-DD from the engine — more accurate than computing from
         // end-of-day equity points (which miss intraday dips that recover by close)
-        const m = computeMetrics(accEquity, params.initialCapital, runningMaxDD)
+        const m = computeMetrics(accEquity, params.initialCapital, runningMaxDD, accTrades)
         setEquityCurve(accEquity)
         setTrades(accTrades)
         setMetrics(m)

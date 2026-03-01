@@ -32,9 +32,10 @@ function pnlCell(v) {
 
 const EXIT_BADGE = {
   'Target':           { cls: 'badge-target',    label: 'Target' },
-  'Stop Loss':        { cls: 'badge-stoploss',   label: 'Stop Loss' },
-  'Stop Loss (Gap)':  { cls: 'badge-sl-gap',     label: 'SL Gap' },
+  'Stop Loss':        { cls: 'badge-stoploss', label: 'Stop Loss' },
+  'Stop Loss (Gap)':  { cls: 'badge-stoploss', label: 'Stop Loss' },
   'Signal':           { cls: 'badge-sell',       label: 'Signal' },
+  'Intraday Close':   { cls: 'badge-intraday',   label: 'Intraday Close' },
   'End of Data':      { cls: 'badge-end',        label: 'End of Data' },
 }
 

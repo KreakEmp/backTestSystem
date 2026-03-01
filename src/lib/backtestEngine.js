@@ -27,44 +27,64 @@
  *                                      intraday drawdowns that end-of-day points miss).
  *                                      When provided, overrides the curve-derived value.
  */
-export function computeMetrics(equityCurve, initialCapital, intradayMaxDD = null) {
-  if (!equityCurve.length) return { totalReturn: '0.00', sharpe: '0.00', maxDrawdown: '0.00', finalValue: initialCapital.toFixed(2) }
+export function computeMetrics(equityCurve, initialCapital, intradayMaxDD = null, trades = []) {
+  const empty = {
+    totalReturn: '0.00', totalPnl: '0.00',
+    maxDrawdown: '0.00', maxDrawdownAbs: '0.00',
+    accuracy: '0.0', winCount: 0, lossCount: 0,
+    rewardRiskRatio: null, avgProfit: '0.00', avgLoss: '0.00', expectancy: '0.00',
+    finalValue: initialCapital.toFixed(2),
+  }
+  if (!equityCurve.length) return empty
 
   const finalValue  = equityCurve[equityCurve.length - 1].value
   const totalReturn = ((finalValue - initialCapital) / initialCapital) * 100
+  const totalPnl    = finalValue - initialCapital
 
-  const dailyReturns = []
-  for (let i = 1; i < equityCurve.length; i++) {
-    const prev = equityCurve[i - 1].value
-    const cur  = equityCurve[i].value
-    if (prev !== 0) dailyReturns.push((cur - prev) / prev)
-  }
-
-  let sharpe = 0
-  if (dailyReturns.length > 1) {
-    const mean     = dailyReturns.reduce((a, b) => a + b, 0) / dailyReturns.length
-    const variance = dailyReturns.reduce((a, b) => a + (b - mean) ** 2, 0) / dailyReturns.length
-    const std      = Math.sqrt(variance)
-    sharpe = std === 0 ? 0 : (mean / std) * Math.sqrt(252)
-  }
 
   // End-of-day max drawdown (fallback when intradayMaxDD isn't available)
   let eodMaxDD = 0
-  let peak = -Infinity
+  let peakEquity = initialCapital
   for (const { value } of equityCurve) {
-    if (value > peak) peak = value
-    const dd = (peak - value) / peak
+    if (value > peakEquity) peakEquity = value
+    const dd = (peakEquity - value) / peakEquity
     if (dd > eodMaxDD) eodMaxDD = dd
   }
 
   // Prefer the intraday-accurate max DD from the simulation engine
-  const maxDrawdown = intradayMaxDD ?? eodMaxDD
+  const maxDrawdown    = intradayMaxDD ?? eodMaxDD
+  const maxDrawdownAbs = maxDrawdown * peakEquity
+
+  // Trade-level stats
+  const wins   = trades.filter(t => t.pnl > 0)
+  const losses = trades.filter(t => t.pnl < 0)
+  const winCount  = wins.length
+  const lossCount = losses.length
+  const accuracy  = trades.length ? (winCount / trades.length) * 100 : 0
+  const avgProfit = winCount  ? wins.reduce((a, t) => a + t.pnl, 0)   / winCount  : 0
+  const avgLoss   = lossCount ? losses.reduce((a, t) => a + t.pnl, 0) / lossCount : 0
+  const rewardRiskRatio = lossCount && avgLoss !== 0
+    ? (avgProfit / Math.abs(avgLoss)).toFixed(2)
+    : null
+  const winRate    = trades.length ? winCount  / trades.length : 0
+  const lossRate   = trades.length ? lossCount / trades.length : 0
+  const rrRaw      = lossCount && avgLoss !== 0 ? avgProfit / Math.abs(avgLoss) : 0
+  // Expectancy in R-multiples: (Win Rate × R:R) − (Loss Rate × 1)
+  const expectancy = trades.length ? (winRate * rrRaw) - (lossRate * 1) : 0
 
   return {
-    totalReturn: totalReturn.toFixed(2),
-    sharpe:      sharpe.toFixed(2),
-    maxDrawdown: (maxDrawdown * 100).toFixed(2),
-    finalValue:  finalValue.toFixed(2),
+    totalReturn:     totalReturn.toFixed(2),
+    totalPnl:        totalPnl.toFixed(2),
+    maxDrawdown:     (maxDrawdown * 100).toFixed(2),
+    maxDrawdownAbs:  maxDrawdownAbs.toFixed(2),
+    accuracy:        accuracy.toFixed(1),
+    winCount,
+    lossCount,
+    rewardRiskRatio,
+    avgProfit:       avgProfit.toFixed(2),
+    avgLoss:         avgLoss.toFixed(2),
+    expectancy:      expectancy.toFixed(2),
+    finalValue:      finalValue.toFixed(2),
   }
 }
 
@@ -238,8 +258,13 @@ export function runBacktest(data, signals, initialCapital, riskConfig = { stopLo
  *
  * Yields: { dayDate: string, newTrades: Trade[], equityPoint: {date, value} }
  */
-export async function* simulateBacktest(minData, stratData, signals, capital, riskConfig = { stopLoss: 0, target: 0, direction: 'long' }) {
-  const { stopLoss, target, direction = 'long' } = riskConfig
+// Extract 'HH:MM' from a 'YYYY-MM-DD HH:MM:SS' date string
+function timeHHMM(dateStr) { return dateStr.slice(11, 16) }
+
+export async function* simulateBacktest(minData, stratData, signals, capital, riskConfig = {}) {
+  const { stopLoss, target, direction = 'long',
+          tradeMode = 'positional', tradeStartTime = '09:15', tradeEndTime = '15:15' } = riskConfig
+  const isIntraday = tradeMode === 'intraday'
 
   // Always align via alignSignals — this handles both the same-interval (1-min) case
   // and different-interval cases correctly, with no lookahead bias.
@@ -291,9 +316,23 @@ export async function* simulateBacktest(minData, stratData, signals, capital, ri
     for (const idx of idxList) {
       const { date, open, high, low, close } = minData[idx]
       const signal = aligned[idx]
+      const time   = timeHHMM(date)
+
+      // ── Intraday forced exit — close at open of first candle at/after tradeEndTime ──
+      if (isIntraday && inPosition && time >= tradeEndTime) {
+        const exitPx = open
+        const pnl = positionType === 'long'
+          ? shares * (exitPx - entryPrice)
+          : shares * (entryPrice - exitPx)
+        if (positionType === 'long') cash += shares * exitPx
+        else cash += shares * entryPrice + pnl
+        updateDD(cash)
+        dayTrades.push(recordTrade(date, addSeconds(date, 0), exitPx, 'Intraday Close', pnl))
+      }
 
       // ── tick 0: OPEN (t+15s) — entry ──────────────────────────────────────
-      if (!inPosition) {
+      const canEnter = !isIntraday || (time >= tradeStartTime && time < tradeEndTime)
+      if (!inPosition && canEnter) {
         const sigMeta = meta[idx]   // { date, price } of the strategy candle that fired
         if (signal === 'BUY' && direction !== 'short') {
           const qty = Math.floor(cash / open)

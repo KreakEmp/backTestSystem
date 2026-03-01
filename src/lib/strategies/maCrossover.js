@@ -15,6 +15,7 @@ import { computeMA } from '../indicators.js'
 export default {
   id: 'maCrossover',
   name: 'MA Crossover',
+  type: 'Trend Following',
 
   paramFields: [
     {
