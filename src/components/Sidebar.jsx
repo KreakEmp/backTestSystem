@@ -1,6 +1,7 @@
 const NAV = [
-  { id: 'backtest', label: 'Backtest',  icon: '📈' },
-  { id: 'settings', label: 'Settings',  icon: '⚙️' },
+  { id: 'backtest',   label: 'Backtest',         icon: '📈' },
+  { id: 'indicators', label: 'Indicator Chart',  icon: '🕯️' },
+  { id: 'settings',   label: 'Settings',         icon: '⚙️' },
 ]
 
 export default function Sidebar({ activePage, onNavigate }) {

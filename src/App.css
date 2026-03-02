@@ -265,7 +265,34 @@ button[type="submit"]:disabled { background: #2a5c3a; color: #555; cursor: not-a
   padding: 20px;
 }
 
-.chart-container h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; color: #ccc; }
+.chart-container h3 { font-size: 16px; font-weight: 600; color: #ccc; }
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.chart-toggle {
+  display: flex;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.chart-toggle-btn {
+  background: none;
+  border: none;
+  padding: 4px 12px;
+  font-size: 12px;
+  color: #666;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.chart-toggle-btn:hover  { background: #1e1e1e; color: #aaa; }
+.chart-toggle-btn.active { background: #1a3327; color: #4ade80; font-weight: 500; }
 
 /* ── Trade log ───────────────────────────────────────────────────────────── */
 
@@ -662,4 +689,70 @@ tbody tr:hover { background: #181818; }
 @keyframes pulse-green {
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.45; }
+}
+
+/* ── Indicator Chart page ────────────────────────────────────────────────── */
+
+.indicator-status {
+  margin-top: 16px;
+  color: #888;
+  font-size: 13px;
+}
+
+.indicator-chart-wrap {
+  margin-top: 28px;
+}
+
+.indicator-chart-meta {
+  font-size: 13px;
+  font-weight: 400;
+  color: #555;
+  margin-left: 10px;
+}
+
+.indicator-chart-warn {
+  font-size: 12px;
+  color: #888;
+  margin: 8px 0 12px;
+  padding: 8px 12px;
+  background: #1e1a14;
+  border: 1px solid #3d3010;
+  border-radius: 6px;
+}
+
+.indicator-legend-hint {
+  font-size: 11px;
+  color: #555;
+  margin-bottom: 12px;
+}
+
+/* ── OHLC Tooltip ────────────────────────────────────────────────────────── */
+
+.ohlc-tooltip {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #ccc;
+  line-height: 1.6;
+  min-width: 180px;
+}
+
+.ohlc-tooltip-date {
+  color: #666;
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.ohlc-tooltip-ohlc {
+  display: flex;
+  gap: 10px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.ohlc-tooltip-ind {
+  font-size: 11px;
 }

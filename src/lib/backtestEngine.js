@@ -11,11 +11,14 @@
  *   (SHORT checks SL before target to be conservative — worst case first)
  *
  * Signal alignment:
- *   Strategy signals are generated from strategy-timeframe candles.
- *   A signal from stratData[i] becomes active at the FIRST 1-min candle
- *   whose timestamp >= stratData[i+1].date (i.e., after the strategy candle closes).
- *   alignSignals() is always used (even for 1-min strategy) to avoid lookahead bias
- *   and so that signalDate/signalPrice reflect the strategy candle, not the entry candle.
+ *   Strategy signals come from strategy-timeframe candles (e.g. 15-min).
+ *   A signal from stratData[i] is stamped on EVERY 1-min candle from the moment
+ *   that strategy candle closes (stratData[i].date + intervalMs) until the next
+ *   strategy candle closes.  This lets the simulation enter at ANY 1-min mark
+ *   within the active window — not just the single candle on the strategy boundary.
+ *   null strategy candles are skipped, leaving those 1-min slots as null.
+ *   alignSignals() is always used to avoid lookahead bias and so that
+ *   signalDate/signalPrice reflect the strategy candle, not the entry candle.
  */
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
@@ -90,6 +93,20 @@ export function computeMetrics(equityCurve, initialCapital, intradayMaxDD = null
 
 // ── Simulation helpers ────────────────────────────────────────────────────────
 
+/** Milliseconds per strategy interval (used to compute candle close time). */
+const INTERVAL_MS = {
+  minute:     60_000,
+  '3minute':  3  * 60_000,
+  '5minute':  5  * 60_000,
+  '10minute': 10 * 60_000,
+  '15minute': 15 * 60_000,
+  '30minute': 30 * 60_000,
+  '60minute': 60 * 60_000,
+  day:        24 * 60 * 60_000,
+  week:       7  * 24 * 60 * 60_000,
+  month:      30 * 24 * 60 * 60_000,
+}
+
 /**
  * Add `seconds` to an ISO timestamp string and return a formatted
  * 'YYYY-MM-DD HH:MM:SS' string in IST (+05:30).
@@ -119,37 +136,55 @@ function groupByDay(minData) {
 
 /**
  * Map strategy-level signals onto the 1-minute candle array.
- * Signal from stratData[i] activates at the first 1-min candle
- * with timestamp >= stratData[i+1].date (next strategy candle open = current candle close).
+ *
+ * Each strategy signal is carried forward across ALL 1-min candles from the
+ * moment the strategy candle closes until the next strategy candle closes:
+ *
+ *   active window = [ stratData[i].date + intervalMs,
+ *                     stratData[i+1].date + intervalMs )
+ *
+ * This means a BUY (or SELL) signal is visible on every 1-min candle in that
+ * window, so the simulation can enter at ANY minute — not just the one candle
+ * that happens to land on the strategy-interval boundary.
+ *
+ * Rules:
+ *  a) null strategy signals are skipped — those 1-min candles stay null.
+ *  b) signal[i] never activates before the candle closes (no lookahead).
+ *  c) The last strategy candle's signal carries forward to the end of minData.
  *
  * Returns:
  *   aligned — Signal[] indexed by minData position ('BUY' | 'SELL' | null)
- *   meta    — parallel array of { date, price } from the strategy candle that generated
- *             each signal (used for signalDate / signalPrice in trade records)
- *
- * This is always called even when minData === stratData (1-min strategy), so that:
- *  a) signal[i] activates at candle i+1 (no lookahead on same candle), and
- *  b) signalDate/signalPrice always reflect the strategy candle, not the entry candle.
+ *   meta    — parallel array of { date, price } from the strategy candle that
+ *             generated each signal (used for signalDate / signalPrice in trades)
  */
-function alignSignals(minData, stratData, stratSignals) {
+function alignSignals(minData, stratData, stratSignals, intervalMs) {
   const aligned  = new Array(minData.length).fill(null)
   const meta     = new Array(minData.length).fill(null)
   const minTimes = minData.map(c => new Date(c.date).getTime())
 
-  for (let i = 0; i < stratData.length - 1; i++) {
+  for (let i = 0; i < stratData.length; i++) {
     if (stratSignals[i] === null) continue
-    const activationMs = new Date(stratData[i + 1].date).getTime()
+
+    // Window: [this candle's close, next candle's close)
+    const activationMs     = new Date(stratData[i].date).getTime() + intervalMs
+    const nextActivationMs = i + 1 < stratData.length
+      ? new Date(stratData[i + 1].date).getTime() + intervalMs
+      : Infinity
 
     // Binary search: first 1-min index with time >= activationMs
-    let lo = 0, hi = minTimes.length - 1, found = -1
+    let lo = 0, hi = minTimes.length - 1, startIdx = -1
     while (lo <= hi) {
       const mid = (lo + hi) >> 1
-      if (minTimes[mid] >= activationMs) { found = mid; hi = mid - 1 }
+      if (minTimes[mid] >= activationMs) { startIdx = mid; hi = mid - 1 }
       else lo = mid + 1
     }
-    if (found !== -1 && aligned[found] === null) {
-      aligned[found] = stratSignals[i]
-      meta[found]    = { date: stratData[i].date, price: stratData[i].close }
+    if (startIdx === -1) continue
+
+    // Stamp every 1-min candle in the window with this strategy signal
+    const sigMeta = { date: stratData[i].date, price: stratData[i].close }
+    for (let j = startIdx; j < minTimes.length && minTimes[j] < nextActivationMs; j++) {
+      aligned[j] = stratSignals[i]
+      meta[j]    = sigMeta
     }
   }
 
@@ -254,7 +289,11 @@ export function runBacktest(data, signals, initialCapital, riskConfig = { stopLo
  * @param {Candle[]} stratData  — strategy-interval candles (may === minData)
  * @param {Signal[]} signals    — per-stratData signal array
  * @param {number}   capital    — initial capital
- * @param {object}   riskConfig — { stopLoss: number, target: number }
+ * @param {object}   riskConfig — { stopLoss, target, interval, ... }
+ *   interval — strategy interval string (e.g. '15minute', 'day').
+ *              Used to compute each strategy candle's close time so that
+ *              signal activation is based on the 1-min clock, not the
+ *              strategy-interval grid. Defaults to 'minute'.
  *
  * Yields: { dayDate: string, newTrades: Trade[], equityPoint: {date, value} }
  */
@@ -262,13 +301,18 @@ export function runBacktest(data, signals, initialCapital, riskConfig = { stopLo
 function timeHHMM(dateStr) { return dateStr.slice(11, 16) }
 
 export async function* simulateBacktest(minData, stratData, signals, capital, riskConfig = {}) {
-  const { stopLoss, target, direction = 'long',
-          tradeMode = 'positional', tradeStartTime = '09:15', tradeEndTime = '15:15' } = riskConfig
+  const { stopLoss, target, quantity = 0, direction = 'long',
+          tradeMode = 'positional', tradeStartTime = '09:15', tradeEndTime = '15:15',
+          interval = 'minute' } = riskConfig
   const isIntraday = tradeMode === 'intraday'
+
+  // Resolve strategy candle duration in milliseconds for activation time computation.
+  // Falls back to 'minute' (60 s) for unknown intervals — safe default.
+  const intervalMs = INTERVAL_MS[interval] ?? INTERVAL_MS.minute
 
   // Always align via alignSignals — this handles both the same-interval (1-min) case
   // and different-interval cases correctly, with no lookahead bias.
-  const { aligned, meta } = alignSignals(minData, stratData, signals)
+  const { aligned, meta } = alignSignals(minData, stratData, signals, intervalMs)
 
   // Simulation state
   let cash          = capital
@@ -280,6 +324,12 @@ export async function* simulateBacktest(minData, stratData, signals, capital, ri
   let cumulativePnl = 0
   let peak          = capital
   let runningMaxDD  = 0
+
+  // Re-entry guard: after any exit, block re-entry in the SAME direction until
+  // an OPPOSITE-direction signal is seen.  This prevents multiple trades within
+  // one ST flip cycle when carry-forward stamps BUY/SELL on many 1-min candles.
+  let reEntryBlocked = false
+  let lastExitDir    = null   // 'long' | 'short'
 
   function updateDD(value) {
     if (value > peak) peak = value
@@ -299,6 +349,8 @@ export async function* simulateBacktest(minData, stratData, signals, capital, ri
       cumulativePnl:       parseFloat(cumulativePnl.toFixed(2)),
       maxDrawdownTillDate: parseFloat((runningMaxDD * 100).toFixed(2)),
     }
+    reEntryBlocked = true       // block same-direction re-entry after any exit
+    lastExitDir    = positionType  // capture before clearing
     pendingTrade = null; shares = 0; inPosition = false; positionType = null
     return trade
   }
@@ -333,9 +385,18 @@ export async function* simulateBacktest(minData, stratData, signals, capital, ri
       // ── tick 0: OPEN (t+15s) — entry ──────────────────────────────────────
       const canEnter = !isIntraday || (time >= tradeStartTime && time < tradeEndTime)
       if (!inPosition && canEnter) {
+        // Re-entry guard: unblock only when the signal flips to the opposite direction.
+        // While carry-forward keeps BUY/SELL active across many 1-min candles, the
+        // block ensures only ONE trade per ST flip cycle.
+        if (reEntryBlocked) {
+          const sigIsOpposite = (signal === 'BUY'  && lastExitDir === 'short')
+                             || (signal === 'SELL' && lastExitDir === 'long')
+          if (sigIsOpposite) reEntryBlocked = false
+        }
+
         const sigMeta = meta[idx]   // { date, price } of the strategy candle that fired
-        if (signal === 'BUY' && direction !== 'short') {
-          const qty = Math.floor(cash / open)
+        if (!reEntryBlocked && signal === 'BUY' && direction !== 'short') {
+          const qty = quantity > 0 ? quantity : Math.floor(cash / open)
           if (qty > 0) {
             shares = qty; entryPrice = open; cash -= qty * open; inPosition = true; positionType = 'long'
             pendingTrade = {
@@ -350,8 +411,8 @@ export async function* simulateBacktest(minData, stratData, signals, capital, ri
               targetPrice:   target   > 0 ? open * (1 + target   / 100) : null,
             }
           }
-        } else if (signal === 'SELL' && direction !== 'long') {
-          const qty = Math.floor(cash / open)
+        } else if (!reEntryBlocked && signal === 'SELL' && direction !== 'long') {
+          const qty = quantity > 0 ? quantity : Math.floor(cash / open)
           if (qty > 0) {
             shares = qty; entryPrice = open; cash -= qty * open; inPosition = true; positionType = 'short'
             pendingTrade = {

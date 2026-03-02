@@ -1,6 +1,14 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { useState } from 'react'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 
 export default function EquityChart({ equityCurve }) {
+  const [showPnL, setShowPnL] = useState(true)
+
+  const initialValue = equityCurve[0]?.value ?? 0
+  const chartData = showPnL
+    ? equityCurve.map(p => ({ ...p, pnl: p.value - initialValue }))
+    : equityCurve
+
   const tickInterval = Math.max(1, Math.floor(equityCurve.length / 8))
 
   // Pick tick indices
@@ -31,9 +39,23 @@ export default function EquityChart({ equityCurve }) {
 
   return (
     <div className="chart-container">
-      <h3>Equity Curve</h3>
+      <div className="chart-header">
+        <h3>P&amp;L Trend</h3>
+        {/* Toggle hidden for now — kept for future use
+        <div className="chart-toggle">
+          <button
+            className={`chart-toggle-btn${!showPnL ? ' active' : ''}`}
+            onClick={() => setShowPnL(false)}
+          >Portfolio</button>
+          <button
+            className={`chart-toggle-btn${showPnL ? ' active' : ''}`}
+            onClick={() => setShowPnL(true)}
+          >P&amp;L</button>
+        </div>
+        */}
+      </div>
       <ResponsiveContainer width="100%" height={300}>
-        <LineChart data={equityCurve} margin={{ top: 8, right: 24, left: 16, bottom: 8 }}>
+        <LineChart data={chartData} margin={{ top: 8, right: 24, left: 16, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" />
           <XAxis
             dataKey="date"
@@ -42,15 +64,23 @@ export default function EquityChart({ equityCurve }) {
             tick={{ fontSize: 11 }}
           />
           <YAxis
+            domain={showPnL ? [dataMin => Math.min(0, dataMin), 'auto'] : ['auto', 'auto']}
             tickFormatter={v => `₹${v.toLocaleString('en-IN')}`}
             tick={{ fontSize: 11 }}
             width={80}
           />
           <Tooltip
-            formatter={v => [`₹${v.toLocaleString('en-IN')}`, 'Portfolio Value']}
+            formatter={v => [`₹${v.toLocaleString('en-IN')}`, showPnL ? 'P&L' : 'Portfolio Value']}
             labelFormatter={date => new Date(date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
           />
-          <Line type="monotone" dataKey="value" stroke="#4ade80" dot={false} strokeWidth={2} />
+          {showPnL && <ReferenceLine y={0} stroke="#444" strokeDasharray="4 3" />}
+          <Line
+            type="monotone"
+            dataKey={showPnL ? 'pnl' : 'value'}
+            stroke="#4ade80"
+            dot={false}
+            strokeWidth={2}
+          />
         </LineChart>
       </ResponsiveContainer>
     </div>

@@ -37,6 +37,7 @@ function loadForm(defaultInterval) {
     initialCapital:  100000,
     stopLoss:        0,
     target:          0,
+    quantity:        0,
     tradeDirection:  'long',
     tradeMode:       'positional',
     tradeStartTime:  '09:15',
@@ -78,8 +79,9 @@ export default function BacktestForm({ onSubmit, loading, intervalOptions, defau
       endDate:        form.endDate,
       initialCapital: parseFloat(form.initialCapital),
       riskConfig: {
-        stopLoss:       parseFloat(form.stopLoss) || 0,
-        target:         parseFloat(form.target)   || 0,
+        stopLoss:       parseFloat(form.stopLoss)  || 0,
+        target:         parseFloat(form.target)    || 0,
+        quantity:       parseInt(form.quantity, 10) || 0,
         direction:      form.tradeDirection,
         tradeMode:      form.tradeMode,
         tradeStartTime: form.tradeMode === 'intraday' ? form.tradeStartTime : null,
@@ -171,6 +173,13 @@ export default function BacktestForm({ onSubmit, loading, intervalOptions, defau
           />
         </label>
         <label>
+          Quantity
+          <input
+            type="number" name="quantity" value={form.quantity} onChange={handleBase}
+            min={0} step={1} placeholder="0 = auto (capital / price)"
+          />
+        </label>
+        <label>
           Trade Direction
           <select name="tradeDirection" value={form.tradeDirection} onChange={handleBase}>
             <option value="long">Long Only (Buy)</option>
@@ -217,6 +226,7 @@ export default function BacktestForm({ onSubmit, loading, intervalOptions, defau
                     onChange={handleStrategyParam}
                     min={field.min}
                     max={field.max}
+                    step={field.step ?? 'any'}
                     required
                   />
                 )}

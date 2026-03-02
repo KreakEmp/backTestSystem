@@ -107,7 +107,10 @@ async function fetchSingleChunk(token, chunkStart, chunkEnd, credentials, interv
     headers: authHeaders(credentials),
     signal:  abortSignal ?? undefined,
   })
-  if (!res.ok) throw new Error(`Kite API error: ${res.status}`)
+  if (!res.ok) {
+    if (res.status === 403) throw new Error('Access denied (403) — your Kite access token has expired. Please refresh it in Settings → Data Connector → Token Helper.')
+    throw new Error(`Kite API error: ${res.status}`)
+  }
   const json = await res.json()
   if (json.status === 'error') throw new Error(`Kite error: ${json.message}`)
   return (json.data?.candles ?? []).map(([date, open, high, low, close, volume]) => ({

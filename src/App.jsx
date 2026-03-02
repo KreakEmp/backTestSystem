@@ -5,6 +5,7 @@ import MetricsCard from './components/MetricsCard'
 import EquityChart from './components/EquityChart'
 import TradeLog from './components/TradeLog'
 import SettingsPage from './pages/SettingsPage'
+import IndicatorPage from './pages/IndicatorPage'
 import { getProvider, providers } from './lib/providers/index.js'
 import { getStrategy } from './lib/strategies/index.js'
 import { fetchDataChunked } from './lib/providers/zerodha.js'
@@ -24,6 +25,31 @@ function loadProviderConfig() {
     if (stored && getProvider(stored.providerId)) return stored
   } catch {}
   return defaultProviderConfig()
+}
+
+// Number of strategy-interval candles that fit in one NSE trading day (375 min session)
+const CANDLES_PER_TRADING_DAY = {
+  minute:    375, '3minute': 125, '5minute': 75, '10minute': 37,
+  '15minute': 25, '30minute': 12, '60minute':  6,
+  day: 1, week: 0.2, month: 0.05,
+}
+
+/**
+ * How far before startDate to begin fetching strategy-interval data so that
+ * indicators have `warmupCandles` valid historical candles by the time
+ * startDate is reached.
+ *
+ * Uses a 2× multiplier on trading-days to account for weekends + NSE
+ * holidays, plus 5 extra calendar days of safety margin.
+ */
+function warmupStartDate(startDate, warmupCandles, interval) {
+  if (!warmupCandles) return startDate
+  const cpd          = CANDLES_PER_TRADING_DAY[interval] ?? 1
+  const tradingDays  = Math.ceil(warmupCandles / cpd)
+  const calendarDays = Math.ceil(tradingDays * 2) + 5
+  const d = new Date(startDate)
+  d.setDate(d.getDate() - calendarDays)
+  return d.toISOString().slice(0, 10)
 }
 
 function formatDuration(ms) {
@@ -117,14 +143,22 @@ export default function App() {
       )
       if (stopRef.current) { finish('stopped'); return }
 
-      // ── Step 2: fetch strategy-interval data for signals ─────────────────────
+      // ── Step 2: fetch strategy-interval data for signals (with warmup) ──────
+      // Extend the fetch start date far enough back so that every indicator
+      // (EMA, SuperTrend, etc.) has a full history of candles by `startDate`.
+      // The 1-min simulation data is unaffected — it still starts at startDate.
+      const warmupCandles = strategy.warmupPeriod?.(params.strategyParams) ?? 0
+      const stratFromDate = warmupStartDate(params.startDate, warmupCandles, params.interval)
+
       let stratData
-      if (params.interval === 'minute') {
+      if (params.interval === 'minute' && stratFromDate === params.startDate) {
+        // No warmup needed for 1-min strategy — reuse already-fetched minData
         stratData = minData
       } else {
-        setFetchProgress(p => ({ ...p, label: `Fetching ${params.interval} candles for signals…` }))
+        const warmupNote = stratFromDate !== params.startDate ? ` (warmup from ${stratFromDate})` : ''
+        setFetchProgress(p => ({ ...p, label: `Fetching ${params.interval} candles for signals…${warmupNote}` }))
         stratData = await fetchDataChunked(
-          params.ticker, params.startDate, params.endDate, creds, params.interval,
+          params.ticker, stratFromDate, params.endDate, creds, params.interval,
           (done, total) => setFetchProgress(p => ({ ...p, stratDone: done, stratTotal: total })),
           abortSignal,
         )
@@ -136,7 +170,15 @@ export default function App() {
       }
 
       // ── Step 3: generate strategy signals from strategy-interval data ─────────
-      const rawSignals = strategy.generateSignals(stratData, params.strategyParams)
+      // fromIndex = first stratData candle on/after the user's startDate.
+      // Candles before it warm up the indicators but the state machine (and all
+      // signal emission) only starts from this index — ensuring:
+      //   • No trades are triggered from warmup-period signals
+      //   • S-Trend waits for a SuperTrend flip that occurs on/after startDate
+      const fromIndex = Math.max(0,
+        stratData.findIndex(c => String(c.date).slice(0, 10) >= params.startDate)
+      )
+      const rawSignals = strategy.generateSignals(stratData, params.strategyParams, fromIndex)
 
       // ── Step 4: stream the simulation day-by-day ─────────────────────────────
       setPhase('simulating')
@@ -144,7 +186,8 @@ export default function App() {
       let accEquity = []
       let accTrades = []
 
-      const gen = simulateBacktest(minData, stratData, rawSignals, params.initialCapital, params.riskConfig)
+      const gen = simulateBacktest(minData, stratData, rawSignals, params.initialCapital,
+        { ...params.riskConfig, interval: params.interval })
 
       for await (const { newTrades, equityPoint, runningMaxDD } of gen) {
         if (stopRef.current) break
@@ -236,14 +279,14 @@ export default function App() {
                       <div className="progress-row">
                         <span className="progress-label">1-min data</span>
                         <progress className="progress-bar" value={fetchProgress.minDone} max={fetchProgress.minTotal} />
-                        <span className="progress-frac">{fetchProgress.minDone}/{fetchProgress.minTotal}</span>
+                        <span className="progress-frac">{Math.round(fetchProgress.minDone / fetchProgress.minTotal * 100)}%</span>
                       </div>
                     )}
                     {fetchProgress.stratTotal > 0 && (
                       <div className="progress-row">
                         <span className="progress-label">{lastParams?.interval} data</span>
                         <progress className="progress-bar" value={fetchProgress.stratDone} max={fetchProgress.stratTotal} />
-                        <span className="progress-frac">{fetchProgress.stratDone}/{fetchProgress.stratTotal}</span>
+                        <span className="progress-frac">{Math.round(fetchProgress.stratDone / fetchProgress.stratTotal * 100)}%</span>
                       </div>
                     )}
                   </div>
@@ -272,6 +315,8 @@ export default function App() {
             )}
           </>
         )}
+
+        {page === 'indicators' && <IndicatorPage />}
 
         {page === 'settings' && (
           <SettingsPage
