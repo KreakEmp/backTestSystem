@@ -5,8 +5,6 @@ import { INDICES, NIFTY50_STOCKS } from '../lib/instruments.js'
 const today = new Date().toISOString().split('T')[0]
 const oneYearAgo = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-const FORM_KEY = 'bt_backtest_form'
-
 function defaultStrategyParams(strategy) {
   return Object.fromEntries(strategy.paramFields.map(f => [f.name, f.default]))
 }
@@ -14,9 +12,9 @@ function defaultStrategyParams(strategy) {
 // Derive sorted unique strategy types from the registry
 const strategyTypes = [...new Set(strategies.map(s => s.type))].sort()
 
-function loadForm(defaultInterval) {
+function loadForm(defaultInterval, storageKey) {
   try {
-    const saved = JSON.parse(localStorage.getItem(FORM_KEY))
+    const saved = JSON.parse(localStorage.getItem(storageKey))
     if (saved && strategies.find(s => s.id === saved.strategyId)) {
       const strategy = strategies.find(s => s.id === saved.strategyId)
       return {
@@ -51,12 +49,13 @@ function loadForm(defaultInterval) {
   }
 }
 
-export default function BacktestForm({ onSubmit, loading, intervalOptions, defaultInterval }) {
-  const [form, setForm] = useState(() => loadForm(defaultInterval))
+export default function BacktestForm({ onSubmit, loading, intervalOptions, defaultInterval, storageKey = 'bt_backtest_form', onChange, hideSubmit = false }) {
+  const [form, setForm] = useState(() => loadForm(defaultInterval, storageKey))
 
   useEffect(() => {
-    localStorage.setItem(FORM_KEY, JSON.stringify(form))
-  }, [form])
+    localStorage.setItem(storageKey, JSON.stringify(form))
+    onChange?.(form)
+  }, [form, storageKey])
 
   const selectedStrategy = strategies.find(s => s.id === form.strategyId)
 
@@ -248,9 +247,11 @@ export default function BacktestForm({ onSubmit, loading, intervalOptions, defau
         </div>
       )}
 
-      <button type="submit" disabled={loading}>
-        {loading ? 'Running…' : 'Start Backtest'}
-      </button>
+      {!hideSubmit && (
+        <button type="submit" disabled={loading}>
+          {loading ? 'Running…' : 'Start Backtest'}
+        </button>
+      )}
     </form>
   )
 }

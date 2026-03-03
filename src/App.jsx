@@ -6,6 +6,8 @@ import EquityChart from './components/EquityChart'
 import TradeLog from './components/TradeLog'
 import SettingsPage from './pages/SettingsPage'
 import IndicatorPage from './pages/IndicatorPage'
+import BulkBacktestPage from './pages/BulkBacktestPage'
+import CopyJsonButton from './components/CopyJsonButton'
 import { getProvider, providers } from './lib/providers/index.js'
 import { getStrategy } from './lib/strategies/index.js'
 import { fetchDataChunked } from './lib/providers/zerodha.js'
@@ -299,21 +301,30 @@ export default function App() {
             {/* ── Progressive results ────────────────────────────────────────── */}
             {hasResults && lastParams && (
               <section className="results">
-                <h2>
-                  Results — {lastParams.ticker}&nbsp;
-                  <span className="subtitle">
-                    {getStrategy(lastParams.strategyId).name}&nbsp;·&nbsp;
-                    signals from {lastParams.interval} candles&nbsp;·&nbsp;
-                    {lastParams.startDate} → {lastParams.endDate}
-                    {isRunning && <span className="sim-live-badge">live</span>}
-                  </span>
-                </h2>
+                <div className="results-header">
+                  <h2>
+                    Results — {lastParams.ticker}&nbsp;
+                    <span className="subtitle">
+                      {getStrategy(lastParams.strategyId).name}&nbsp;·&nbsp;
+                      signals from {lastParams.interval} candles&nbsp;·&nbsp;
+                      {lastParams.startDate} → {lastParams.endDate}
+                      {isRunning && <span className="sim-live-badge">live</span>}
+                    </span>
+                  </h2>
+                  {!isRunning && metrics && (
+                    <CopyJsonButton getData={() => ({ config: lastParams, metrics })} />
+                  )}
+                </div>
                 {metrics && <MetricsCard metrics={metrics} />}
                 {equityCurve.length > 1 && <EquityChart equityCurve={equityCurve} />}
                 <TradeLog trades={trades} />
               </section>
             )}
           </>
+        )}
+
+        {page === 'bulk' && (
+          <BulkBacktestPage providerConfig={providerConfig} />
         )}
 
         {page === 'indicators' && <IndicatorPage />}

@@ -222,6 +222,14 @@ button[type="submit"]:disabled { background: #2a5c3a; color: #555; cursor: not-a
 
 .results h2 .subtitle { font-size: 14px; color: #888; font-weight: 400; }
 
+.results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 /* ── Metrics ─────────────────────────────────────────────────────────────── */
 
 .metrics-card {
@@ -725,6 +733,163 @@ tbody tr:hover { background: #181818; }
   color: #555;
   margin-bottom: 12px;
 }
+
+/* ── Bulk Backtest — Optimize panel ─────────────────────────────────────── */
+
+.optimize-panel {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 20px 24px;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.optimize-scenario-count {
+  align-self: flex-end;
+  padding-bottom: 10px;
+  font-size: 13px;
+  color: #666;
+  white-space: nowrap;
+}
+
+.optimize-scenario-count strong { color: #4ade80; font-weight: 700; }
+
+.optimize-actions { display: flex; align-items: center; }
+
+.optimize-run-btn {
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 26px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.optimize-run-btn:hover    { background: #1d4ed8; }
+.optimize-run-btn:disabled { background: #1e2d4a; color: #444; cursor: not-allowed; }
+
+.optimize-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Bulk Backtest — Results table ──────────────────────────────────────── */
+
+.optimize-results {
+  margin-top: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.optimize-results-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.optimize-results-header h2 { font-size: 18px; font-weight: 600; }
+
+.sort-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #888;
+}
+
+.sort-control select { width: auto; }
+
+.optimize-table-wrap {
+  overflow-x: auto;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+}
+
+.optimize-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 700px;
+}
+
+.optimize-table thead { background: #1a1a1a; }
+
+.optimize-table th {
+  padding: 10px 14px;
+  text-align: left;
+  color: #888;
+  font-weight: 500;
+  border-bottom: 1px solid #2a2a2a;
+  white-space: nowrap;
+}
+
+.optimize-table td {
+  padding: 9px 14px;
+  border-bottom: 1px solid #1e1e1e;
+  color: #ccc;
+  white-space: nowrap;
+}
+
+.optimize-table tbody tr:last-child td { border-bottom: none; }
+.optimize-table tbody tr:hover          { background: #181818; }
+
+.optimize-row-top5                 { background: #1c1a00; }
+.optimize-row-top5:hover           { background: #242000; }
+.optimize-row-top5 .optimize-value-cell { color: #fbbf24; }
+
+.optimize-value-cell {
+  font-weight: 600;
+  color: #e5e5e5;
+  font-variant-numeric: tabular-nums;
+}
+
+.optimize-cell-status { color: #555; }
+
+.top5-badge {
+  display: inline-block;
+  background: #3d3000;
+  color: #fbbf24;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.optimize-done-note {
+  font-size: 12px;
+  color: #555;
+}
+
+/* ── Copy JSON button ────────────────────────────────────────────────────── */
+
+.copy-json-btn {
+  padding: 5px 14px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: transparent;
+  color: #888;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.copy-json-btn:hover  { color: #ccc; border-color: #555; }
+.copy-json-btn.copied { color: #4ade80; border-color: #4ade80; }
 
 /* ── OHLC Tooltip ────────────────────────────────────────────────────────── */
 

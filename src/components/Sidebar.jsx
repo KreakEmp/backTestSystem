@@ -1,5 +1,6 @@
 const NAV = [
   { id: 'backtest',   label: 'Backtest',         icon: '📈' },
+  { id: 'bulk',       label: 'Bulk Backtest',    icon: '📊' },
   { id: 'indicators', label: 'Indicator Chart',  icon: '🕯️' },
   { id: 'settings',   label: 'Settings',         icon: '⚙️' },
 ]
