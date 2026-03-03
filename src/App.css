@@ -747,15 +747,106 @@ tbody tr:hover { background: #181818; }
   gap: 14px;
 }
 
-.optimize-scenario-count {
-  align-self: flex-end;
-  padding-bottom: 10px;
-  font-size: 13px;
-  color: #666;
-  white-space: nowrap;
+/* ── Variable rows ───────────────────────────────────────────────────────── */
+
+.optimize-vars-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.optimize-scenario-count strong { color: #4ade80; font-weight: 700; }
+.optimize-var-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.optimize-var-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #aaa;
+  font-size: 13px;
+  flex: 2;
+  min-width: 160px;
+}
+
+.optimize-var-num {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #aaa;
+  font-size: 13px;
+  flex: 1;
+  min-width: 80px;
+}
+
+.optimize-var-count {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #aaa;
+  font-size: 13px;
+  min-width: 54px;
+}
+
+.optimize-var-count-val {
+  display: block;
+  padding: 8px 10px;
+  background: #111;
+  border: 1px solid #2a2a2a;
+  border-radius: 6px;
+  color: #4ade80;
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+}
+
+.optimize-var-remove {
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 6px;
+  color: #555;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+  align-self: flex-end;
+}
+
+.optimize-var-remove:hover    { color: #f87171; border-color: #f87171; }
+.optimize-var-remove:disabled { opacity: 0.3; cursor: not-allowed; }
+
+/* ── Panel footer (add var + scenario count) ─────────────────────────────── */
+
+.optimize-panel-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.add-var-btn {
+  background: transparent;
+  border: 1px dashed #333;
+  border-radius: 6px;
+  color: #666;
+  font-size: 13px;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.add-var-btn:hover    { color: #aaa; border-color: #555; }
+.add-var-btn:disabled { cursor: not-allowed; opacity: 0.4; }
+
+.optimize-scenario-summary       { font-size: 13px; color: #666; }
+.optimize-scenario-summary strong { color: #4ade80; font-weight: 700; }
+.optimize-scenario-summary.capped strong { color: #fb923c; }
+.optimize-cap-note                { color: #fb923c; font-size: 12px; }
 
 .optimize-actions { display: flex; align-items: center; }
 
