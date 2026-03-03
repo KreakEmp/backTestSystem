@@ -6,9 +6,10 @@
  *
  * Sub-tick model (per 1-minute candle):
  *   t+15s  open  → entry (LONG on BUY signal, SHORT on SELL signal)
- *   LONG:  t+30s low → SL check;  t+45s high → target check; t+60s close → SELL exit
- *   SHORT: t+30s high → SL check; t+45s low  → target check; t+60s close → BUY exit
+ *   LONG:  t+30s low → SL check;  t+45s high → target check; t+60s close → exit if signal ≠ BUY
+ *   SHORT: t+30s high → SL check; t+45s low  → target check; t+60s close → exit if signal ≠ SELL
  *   (SHORT checks SL before target to be conservative — worst case first)
+ *   signal=null means the strategy's run ended (EMA-touch, conditions failed, etc.).
  *
  * Signal alignment:
  *   Strategy signals come from strategy-timeframe candles (e.g. 15-min).
@@ -385,13 +386,20 @@ export async function* simulateBacktest(minData, stratData, signals, capital, ri
       // ── tick 0: OPEN (t+15s) — entry ──────────────────────────────────────
       const canEnter = !isIntraday || (time >= tradeStartTime && time < tradeEndTime)
       if (!inPosition && canEnter) {
-        // Re-entry guard: unblock only when the signal flips to the opposite direction.
-        // While carry-forward keeps BUY/SELL active across many 1-min candles, the
-        // block ensures only ONE trade per ST flip cycle.
+        // Re-entry guard: unblock when the strategy signal changes direction or
+        // goes null (strategy entered an idle/observation phase between runs).
+        // • null  → strategy run ended; safe to re-arm for the next run
+        // • opposite direction → ST has flipped the other way
+        // While carry-forward stamps BUY/SELL on many 1-min candles this ensures
+        // at most one trade per signal run.
         if (reEntryBlocked) {
-          const sigIsOpposite = (signal === 'BUY'  && lastExitDir === 'short')
-                             || (signal === 'SELL' && lastExitDir === 'long')
-          if (sigIsOpposite) reEntryBlocked = false
+          if (signal === null) {
+            reEntryBlocked = false
+          } else {
+            const sigIsOpposite = (signal === 'BUY'  && lastExitDir === 'short')
+                               || (signal === 'SELL' && lastExitDir === 'long')
+            if (sigIsOpposite) reEntryBlocked = false
+          }
         }
 
         const sigMeta = meta[idx]   // { date, price } of the strategy candle that fired
@@ -461,8 +469,10 @@ export async function* simulateBacktest(minData, stratData, signals, capital, ri
             dayTrades.push(recordTrade(date, addSeconds(date, 45), exitPx, tgtReason, pnl))
             exited = true
           }
-          // ── tick 3: CLOSE (t+60s) — SELL signal exit ─────────────────────
-          if (!exited && signal === 'SELL') {
+          // ── tick 3: CLOSE (t+60s) — run-end exit ─────────────────────────
+          // Exit when signal is no longer BUY (null = run ended; SELL = trend reversed).
+          // Strategies emit null when a run ends (EMA-touch, conditions fail, etc.).
+          if (!exited && signal !== 'BUY') {
             const pnl = shares * (close - entryPrice)
             cash     += shares * close
             updateDD(cash)
@@ -492,8 +502,9 @@ export async function* simulateBacktest(minData, stratData, signals, capital, ri
             dayTrades.push(recordTrade(date, addSeconds(date, 45), exitPx, tgtReason, pnl))
             exited = true
           }
-          // ── tick 3: CLOSE (t+60s) — BUY signal exit ──────────────────────
-          if (!exited && signal === 'BUY') {
+          // ── tick 3: CLOSE (t+60s) — run-end exit ─────────────────────────
+          // Exit when signal is no longer SELL (null = run ended; BUY = trend reversed).
+          if (!exited && signal !== 'SELL') {
             const pnl = shares * (entryPrice - close)
             cash     += shares * entryPrice + pnl
             updateDD(cash)

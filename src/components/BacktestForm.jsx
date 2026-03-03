@@ -21,31 +21,33 @@ function loadForm(defaultInterval) {
       const strategy = strategies.find(s => s.id === saved.strategyId)
       return {
         ...saved,
-        strategyType:   saved.strategyType  ?? strategy.type,
-        tradeMode:      saved.tradeMode      ?? 'positional',
-        tradeStartTime: saved.tradeStartTime ?? '09:15',
-        tradeEndTime:   saved.tradeEndTime   ?? '15:15',
-        strategyParams: { ...defaultStrategyParams(strategy), ...saved.strategyParams },
+        strategyType:        saved.strategyType  ?? strategy.type,
+        tradeMode:           saved.tradeMode      ?? 'positional',
+        tradeStartTime:      saved.tradeStartTime ?? '09:15',
+        tradeEndTime:        saved.tradeEndTime   ?? '15:15',
+        strategyParams:      { ...defaultStrategyParams(strategy), ...saved.strategyParams },
+        strategyParamsCache: saved.strategyParamsCache ?? {},
       }
     }
   } catch {}
   const s = strategies[0]
   return {
-    ticker:          'NIFTY 50',
-    startDate:       oneYearAgo,
-    endDate:         today,
-    initialCapital:  100000,
-    stopLoss:        0,
-    target:          0,
-    quantity:        0,
-    tradeDirection:  'long',
-    tradeMode:       'positional',
-    tradeStartTime:  '09:15',
-    tradeEndTime:    '15:15',
-    strategyType:    s.type,
-    strategyId:      s.id,
-    interval:        defaultInterval,
-    strategyParams:  defaultStrategyParams(s),
+    ticker:              'NIFTY 50',
+    startDate:           oneYearAgo,
+    endDate:             today,
+    initialCapital:      100000,
+    stopLoss:            0,
+    target:              0,
+    quantity:            0,
+    tradeDirection:      'long',
+    tradeMode:           'positional',
+    tradeStartTime:      '09:15',
+    tradeEndTime:        '15:15',
+    strategyType:        s.type,
+    strategyId:          s.id,
+    interval:            defaultInterval,
+    strategyParams:      defaultStrategyParams(s),
+    strategyParamsCache: {},
   }
 }
 
@@ -64,7 +66,17 @@ export default function BacktestForm({ onSubmit, loading, intervalOptions, defau
 
   function handleStrategyChange(e) {
     const strategy = strategies.find(s => s.id === e.target.value)
-    setForm(f => ({ ...f, strategyType: strategy.type, strategyId: strategy.id, strategyParams: defaultStrategyParams(strategy) }))
+    setForm(f => {
+      const updatedCache = { ...f.strategyParamsCache, [f.strategyId]: f.strategyParams }
+      const cached = updatedCache[strategy.id]
+      return {
+        ...f,
+        strategyType:        strategy.type,
+        strategyId:          strategy.id,
+        strategyParams:      cached ? { ...defaultStrategyParams(strategy), ...cached } : defaultStrategyParams(strategy),
+        strategyParamsCache: updatedCache,
+      }
+    })
   }
 
   function handleStrategyParam(e) {

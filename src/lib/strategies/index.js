@@ -1,5 +1,6 @@
 import maCrossover from './maCrossover.js'
 import sTrend      from './sTrend.js'
+import sTrendEma   from './sTrendEma.js'
 
 // ─── Add new strategies here ──────────────────────────────────────────────────
 // 1. Create src/lib/strategies/<yourStrategy>.js following the same contract.
@@ -8,6 +9,7 @@ import sTrend      from './sTrend.js'
 const strategies = [
   maCrossover,
   sTrend,
+  sTrendEma,
 ]
 
 export const getStrategy = id => strategies.find(s => s.id === id)
