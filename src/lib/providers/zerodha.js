@@ -62,10 +62,14 @@ function authHeaders(credentials) {
   }
 }
 
+function baseUrl(credentials) {
+  return (credentials.proxyUrl || BASE_URL).replace(/\/$/, '')
+}
+
 async function getInstrumentCache(credentials) {
   if (_instrumentCache) return _instrumentCache
 
-  const res = await fetch(`${BASE_URL}/instruments/NSE`, { headers: authHeaders(credentials) })
+  const res = await fetch(`${baseUrl(credentials)}/instruments/NSE`, { headers: authHeaders(credentials) })
   if (!res.ok) throw new Error(`Failed to fetch instrument list: ${res.status}`)
 
   const csv = await res.text()
@@ -102,7 +106,7 @@ async function resolveToken(ticker, credentials) {
 async function fetchSingleChunk(token, chunkStart, chunkEnd, credentials, interval, abortSignal) {
   const from = encodeURIComponent(`${chunkStart} 09:15:00`)
   const to   = encodeURIComponent(`${chunkEnd} 15:30:00`)
-  const url  = `${BASE_URL}/instruments/historical/${token}/${interval}?from=${from}&to=${to}&continuous=0&oi=0`
+  const url  = `${baseUrl(credentials)}/instruments/historical/${token}/${interval}?from=${from}&to=${to}&continuous=0&oi=0`
   const res  = await fetch(url, {
     headers: authHeaders(credentials),
     signal:  abortSignal ?? undefined,

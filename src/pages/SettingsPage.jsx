@@ -2,6 +2,27 @@ import { useState } from 'react'
 import { providers } from '../lib/providers/index.js'
 import { BASE_URL } from '../lib/providers/zerodha.js'
 
+function CopyTokenButton({ value }) {
+  const [copied, setCopied] = useState(false)
+  async function handleCopy() {
+    if (!value) return
+    await navigator.clipboard.writeText(value)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <button
+      type="button"
+      className={`toggle-secret${copied ? ' copied-token' : ''}`}
+      onClick={handleCopy}
+      disabled={!value}
+      title="Copy to clipboard"
+    >
+      {copied ? '✓ Copied' : 'Copy'}
+    </button>
+  )
+}
+
 // ── Tab registry — add new settings tabs here ────────────────────────────────
 const TABS = [
   { id: 'dataConnector', label: 'Data Connector' },
@@ -18,6 +39,10 @@ async function sha256hex(str) {
 }
 
 // ── Token Helper (Zerodha-specific) ──────────────────────────────────────────
+function resolvedBase(credentials) {
+  return (credentials.proxyUrl || BASE_URL).replace(/\/$/, '')
+}
+
 function TokenHelper({ credentials, onTokenGenerated }) {
   const [requestToken, setRequestToken] = useState('')
   const [busy, setBusy] = useState(false)
@@ -35,7 +60,7 @@ function TokenHelper({ credentials, onTokenGenerated }) {
     setMsg(null)
     try {
       const checksum = await sha256hex(apiKey + requestToken.trim() + apiSecret)
-      const res = await fetch(`${BASE_URL}/session/token`, {
+      const res = await fetch(`${resolvedBase(credentials)}/session/token`, {
         method: 'POST',
         headers: {
           'X-Kiteconnect-Apikey': apiKey,
@@ -169,7 +194,7 @@ print(r.json()["data"]["access_token"])`}
 // ─────────────────────────────────────────────────────────────────────────────
 
 // ── Zerodha one-click login (popup flow) ─────────────────────────────────────
-function ZerodhaLoginButton({ apiKey, apiSecret, tokenUpdatedAt, onTokenGenerated }) {
+function ZerodhaLoginButton({ apiKey, apiSecret, proxyUrl, tokenUpdatedAt, onTokenGenerated }) {
   const [status, setStatus] = useState(null) // null | 'waiting' | 'exchanging' | 'success' | 'error'
   const [msg,    setMsg]    = useState('')
 
@@ -197,7 +222,7 @@ function ZerodhaLoginButton({ apiKey, apiSecret, tokenUpdatedAt, onTokenGenerate
           setStatus('exchanging')
           try {
             const checksum = await sha256hex(apiKey + requestToken + apiSecret)
-            const res = await fetch(`${BASE_URL}/session/token`, {
+            const res = await fetch(`${resolvedBase({ proxyUrl })}/session/token`, {
               method: 'POST',
               headers: {
                 'X-Kiteconnect-Apikey': apiKey,
@@ -387,9 +412,65 @@ export default function SettingsPage({ providerConfig, onSave }) {
             <ZerodhaLoginButton
               apiKey={local.credentials.apiKey}
               apiSecret={local.credentials.apiSecret}
+              proxyUrl={local.credentials.proxyUrl}
               tokenUpdatedAt={local.tokenUpdatedAt}
               onTokenGenerated={handleTokenGenerated}
             />
+          )}
+
+          {/* Access Token display — show/copy/edit */}
+          {local.providerId === 'zerodha' && (
+            <div className="settings-field">
+              <label>Access Token</label>
+              <div className="secret-wrapper">
+                <input
+                  name="accessToken"
+                  type={visibleFields.accessToken ? 'text' : 'password'}
+                  value={local.credentials.accessToken ?? ''}
+                  onChange={handleCredential}
+                  placeholder="Paste access token here, or use Refresh Auth Token above"
+                  autoComplete="off"
+                />
+                <button type="button" className="toggle-secret" onClick={() => toggleVisible('accessToken')}>
+                  {visibleFields.accessToken ? 'Hide' : 'Show'}
+                </button>
+                <CopyTokenButton value={local.credentials.accessToken} />
+              </div>
+              {local.tokenUpdatedAt && (
+                <span className="settings-hint" style={{ marginTop: 4 }}>
+                  Last refreshed: {new Date(local.tokenUpdatedAt).toLocaleDateString()} {new Date(local.tokenUpdatedAt).toLocaleTimeString()}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* CORS Proxy URL — required for hosted / non-localhost use */}
+          {local.providerId === 'zerodha' && (
+            <div>
+              <h3 style={{ marginBottom: 4 }}>CORS Proxy</h3>
+              <p className="settings-hint" style={{ marginBottom: 10 }}>
+                Required when running from a hosted URL (GitHub Pages, etc.). Zerodha's API blocks browser
+                requests from non-localhost origins. Set up a free{' '}
+                <strong>Cloudflare Worker</strong> proxy and paste its URL here.
+                {' '}<a href="https://github.com/KreakEmp/backTestSystem#cors-proxy-setup" target="_blank" rel="noopener noreferrer" style={{ color: '#4ade80' }}>Setup guide →</a>
+              </p>
+              {window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1') && !local.credentials.proxyUrl && (
+                <p className="token-warning" style={{ marginBottom: 10 }}>
+                  ⚠ You're on a hosted URL without a proxy — API calls will fail. Set the proxy URL below or run locally with <code>npm run dev</code>.
+                </p>
+              )}
+              <div className="settings-field">
+                <label>Proxy Base URL</label>
+                <input
+                  name="proxyUrl"
+                  type="text"
+                  value={local.credentials.proxyUrl ?? ''}
+                  onChange={handleCredential}
+                  placeholder="https://your-worker.workers.dev  (leave blank when running locally)"
+                  autoComplete="off"
+                />
+              </div>
+            </div>
           )}
 
           <div className="settings-actions">

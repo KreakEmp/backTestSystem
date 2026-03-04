@@ -471,11 +471,10 @@ tbody tr:hover { background: #181818; }
   align-items: center;
 }
 
-.secret-wrapper input { padding-right: 64px; }
+.secret-wrapper input { flex: 1; min-width: 0; }
 
 .toggle-secret {
-  position: absolute;
-  right: 8px;
+  flex-shrink: 0;
   background: #222;
   border: 1px solid #333;
   border-radius: 4px;
@@ -483,12 +482,14 @@ tbody tr:hover { background: #181818; }
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
-  padding: 3px 8px;
+  padding: 4px 10px;
   transition: color 0.12s, background 0.12s;
   white-space: nowrap;
 }
 
-.toggle-secret:hover { color: #ccc; background: #2a2a2a; }
+.toggle-secret:hover       { color: #ccc; background: #2a2a2a; }
+.toggle-secret:disabled    { opacity: 0.35; cursor: default; }
+.toggle-secret.copied-token { color: #4ade80; border-color: #4ade80; }
 
 .settings-actions {
   display: flex;
