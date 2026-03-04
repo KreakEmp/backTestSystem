@@ -72,6 +72,24 @@ export default function App() {
   const [page,           setPage]           = useState('backtest')
   const [providerConfig, setProviderConfig] = useState(loadProviderConfig)
 
+  // ── Sidebar state ─────────────────────────────────────────────────────────────
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem('bt_sidebar_collapsed') === 'true'
+  )
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  function handleToggleCollapse() {
+    setSidebarCollapsed(c => {
+      localStorage.setItem('bt_sidebar_collapsed', String(!c))
+      return !c
+    })
+  }
+
+  function handleNavigate(p) {
+    setPage(p)
+    setSidebarOpen(false)
+  }
+
   // ── Backtest lifecycle ───────────────────────────────────────────────────────
   // phase: 'idle' | 'fetching' | 'simulating' | 'done' | 'stopped'
   const [phase,     setPhase]     = useState('idle')
@@ -228,9 +246,22 @@ export default function App() {
 
   return (
     <div className="layout">
-      <Sidebar activePage={page} onNavigate={setPage} />
+      <Sidebar
+        activePage={page}
+        onNavigate={handleNavigate}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={handleToggleCollapse}
+        mobileOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
       <main className="main-content">
+        {/* Mobile top bar */}
+        <div className="mobile-topbar">
+          <button className="mobile-menu-btn" onClick={() => setSidebarOpen(o => !o)}>☰</button>
+          <span className="mobile-logo">StockBT</span>
+        </div>
+
         {page === 'backtest' && (
           <>
             <div className="page-header">

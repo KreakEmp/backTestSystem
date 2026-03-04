@@ -27,25 +27,62 @@ body {
   position: sticky;
   top: 0;
   height: 100vh;
+  transition: width 0.22s ease;
+  overflow: hidden;
 }
+
+/* ── Collapsed (desktop icon-only) ──────────────────────────────────────── */
+
+.sidebar-collapsed { width: 56px; }
+
+.sidebar-collapsed .sidebar-logo-text { display: none; }
+.sidebar-collapsed .sidebar-logo      { justify-content: center; padding: 16px 0; }
+.sidebar-collapsed .nav-label         { display: none; }
+.sidebar-collapsed .nav-item          { justify-content: center; padding: 10px 0; }
+
+/* ── Logo / header area ──────────────────────────────────────────────────── */
 
 .sidebar-logo {
-  padding: 22px 20px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 14px 18px;
   border-bottom: 1px solid #1e1e1e;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
-.sidebar-logo h2 {
+.sidebar-logo-text h2 {
   font-size: 17px;
   font-weight: 700;
   color: #4ade80;
   letter-spacing: -0.3px;
+  white-space: nowrap;
 }
 
-.sidebar-logo p {
+.sidebar-logo-text p {
   font-size: 11px;
   color: #555;
   margin-top: 3px;
+  white-space: nowrap;
 }
+
+.sidebar-collapse-btn {
+  background: none;
+  border: none;
+  color: #444;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.12s, background 0.12s;
+}
+
+.sidebar-collapse-btn:hover { color: #aaa; background: #1a1a1a; }
+
+/* ── Nav list ────────────────────────────────────────────────────────────── */
 
 .sidebar-nav {
   list-style: none;
@@ -69,12 +106,24 @@ body {
   cursor: pointer;
   text-align: left;
   transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
 }
 
 .nav-item:hover  { background: #1a1a1a; color: #ccc; }
 .nav-item.active { background: #1a3327; color: #4ade80; font-weight: 600; }
 
-.nav-icon { font-size: 15px; width: 20px; text-align: center; }
+.nav-icon  { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+.nav-label { overflow: hidden; }
+
+/* ── Mobile overlay ──────────────────────────────────────────────────────── */
+
+.sidebar-overlay {
+  display: none;
+}
+
+/* ── Mobile top bar (hidden on desktop) ──────────────────────────────────── */
+
+.mobile-topbar { display: none; }
 
 /* ── Main content ────────────────────────────────────────────────────────── */
 
@@ -83,6 +132,7 @@ body {
   padding: 32px 36px 64px;
   overflow-y: auto;
   max-width: 1060px;
+  min-width: 0;
 }
 
 /* ── Page header ─────────────────────────────────────────────────────────── */
@@ -1083,4 +1133,143 @@ tbody tr:hover { background: #181818; }
 
 .ohlc-tooltip-ind {
   font-size: 11px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE / MOBILE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+
+  /* ── Sidebar becomes a slide-in drawer ──────────────────────────────────── */
+
+  .sidebar {
+    position: fixed;
+    left: 0; top: 0;
+    height: 100%;
+    width: 240px !important;   /* always full-width on mobile, ignore collapsed */
+    z-index: 200;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+  }
+
+  .sidebar.sidebar-mobile-open { transform: translateX(0); }
+
+  /* Force show labels/logo regardless of collapsed state */
+  .sidebar .sidebar-logo-text   { display: block !important; }
+  .sidebar .sidebar-logo        { justify-content: space-between !important; padding: 20px 14px 18px !important; }
+  .sidebar .nav-label           { display: block !important; }
+  .sidebar .nav-item            { justify-content: flex-start !important; padding: 10px 12px !important; }
+
+  /* Hide desktop collapse button on mobile */
+  .sidebar-collapse-btn { display: none; }
+
+  /* Overlay behind open drawer */
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    z-index: 199;
+  }
+
+  /* ── Mobile top bar ──────────────────────────────────────────────────────── */
+
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    height: 52px;
+    background: #111;
+    border-bottom: 1px solid #1e1e1e;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    margin: -16px -16px 20px;   /* bleed to edges of main-content padding */
+  }
+
+  .mobile-menu-btn {
+    background: none;
+    border: none;
+    color: #aaa;
+    font-size: 20px;
+    cursor: pointer;
+    padding: 6px 8px;
+    border-radius: 6px;
+    line-height: 1;
+  }
+
+  .mobile-menu-btn:hover { background: #1a1a1a; color: #fff; }
+
+  .mobile-logo {
+    font-size: 16px;
+    font-weight: 700;
+    color: #4ade80;
+    letter-spacing: -0.3px;
+  }
+
+  /* ── Layout ──────────────────────────────────────────────────────────────── */
+
+  .main-content {
+    padding: 16px 16px 48px;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* ── Page header ─────────────────────────────────────────────────────────── */
+
+  .page-header h1  { font-size: 20px; }
+  .page-header p   { font-size: 12px; }
+
+  /* ── Form ────────────────────────────────────────────────────────────────── */
+
+  .backtest-form   { padding: 16px; gap: 14px; }
+
+  .form-row label  { min-width: 0; flex: 1 1 calc(50% - 8px); }
+  .ticker-label    { flex: 1 1 100%; min-width: 0; }
+
+  button[type="submit"] { width: 100%; text-align: center; }
+
+  /* ── Metrics cards — 2 per row on mobile ─────────────────────────────────── */
+
+  .metric { flex: 1 1 calc(50% - 8px); min-width: 0; padding: 14px 16px; }
+  .metric-value { font-size: 20px; }
+
+  /* ── Charts / tables — horizontal scroll ─────────────────────────────────── */
+
+  .chart-container { padding: 14px; }
+
+  .table-wrapper,
+  .optimize-table-wrap,
+  .pnl-heatmap-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* ── Run status panel ────────────────────────────────────────────────────── */
+
+  .run-status-row   { flex-wrap: wrap; gap: 8px; }
+  .run-elapsed      { font-size: 11px; }
+  .fetch-progress   { padding: 10px; }
+
+  /* ── Results header ──────────────────────────────────────────────────────── */
+
+  .results-header       { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .results-header h2    { font-size: 15px; }
+
+  /* ── Optimize panel ──────────────────────────────────────────────────────── */
+
+  .optimize-panel         { padding: 14px; }
+  .optimize-var-row       { gap: 8px; }
+  .optimize-var-field     { flex: 1 1 100%; }
+  .optimize-var-num       { flex: 1 1 calc(33% - 6px); min-width: 0; }
+  .optimize-panel-footer  { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .optimize-run-btn       { width: 100%; text-align: center; }
+
+  /* ── Settings ────────────────────────────────────────────────────────────── */
+
+  .settings-card { padding: 16px; }
+
+  /* ── Sort control ────────────────────────────────────────────────────────── */
+
+  .optimize-results-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .sort-control { font-size: 12px; }
 }
