@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  base: '/backTestSystem/',
   server: {
     proxy: {
       // All requests to /kite/* are forwarded to api.kite.trade/*

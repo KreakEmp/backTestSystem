@@ -4,6 +4,7 @@ import BacktestForm from './components/BacktestForm'
 import MetricsCard from './components/MetricsCard'
 import EquityChart from './components/EquityChart'
 import TradeLog from './components/TradeLog'
+import PnlHeatmap from './components/PnlHeatmap'
 import SettingsPage from './pages/SettingsPage'
 import IndicatorPage from './pages/IndicatorPage'
 import BulkBacktestPage from './pages/BulkBacktestPage'
@@ -317,6 +318,7 @@ export default function App() {
                 </div>
                 {metrics && <MetricsCard metrics={metrics} />}
                 {equityCurve.length > 1 && <EquityChart equityCurve={equityCurve} />}
+                <PnlHeatmap trades={trades} />
                 <TradeLog trades={trades} />
               </section>
             )}
