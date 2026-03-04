@@ -444,34 +444,6 @@ export default function SettingsPage({ providerConfig, onSave }) {
             </div>
           )}
 
-          {/* CORS Proxy URL — required for hosted / non-localhost use */}
-          {local.providerId === 'zerodha' && (
-            <div>
-              <h3 style={{ marginBottom: 4 }}>CORS Proxy</h3>
-              <p className="settings-hint" style={{ marginBottom: 10 }}>
-                Required when running from a hosted URL (GitHub Pages, etc.). Zerodha's API blocks browser
-                requests from non-localhost origins. Set up a free{' '}
-                <strong>Cloudflare Worker</strong> proxy and paste its URL here.
-                {' '}<a href="https://github.com/KreakEmp/backTestSystem#cors-proxy-setup" target="_blank" rel="noopener noreferrer" style={{ color: '#4ade80' }}>Setup guide →</a>
-              </p>
-              {window.location.hostname !== 'localhost' && !window.location.hostname.includes('127.0.0.1') && !local.credentials.proxyUrl && (
-                <p className="token-warning" style={{ marginBottom: 10 }}>
-                  ⚠ You're on a hosted URL without a proxy — API calls will fail. Set the proxy URL below or run locally with <code>npm run dev</code>.
-                </p>
-              )}
-              <div className="settings-field">
-                <label>Proxy Base URL</label>
-                <input
-                  name="proxyUrl"
-                  type="text"
-                  value={local.credentials.proxyUrl ?? ''}
-                  onChange={handleCredential}
-                  placeholder="https://your-worker.workers.dev  (leave blank when running locally)"
-                  autoComplete="off"
-                />
-              </div>
-            </div>
-          )}
 
           <div className="settings-actions">
             <button type="submit" className="save-btn">Save Settings</button>
